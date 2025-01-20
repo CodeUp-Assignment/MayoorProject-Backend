@@ -1,1 +1,323 @@
 
+import express , {json} from "express";
+import mysql from "mysql2";
+
+const app = express();
+const PORT = process.env.PORT || 8000;
+
+const db = mysql.createConnection({
+    host: "localhost",  
+    user: "root",        
+    password: "",        
+    database: "products_db" 
+});
+
+db.connect((err) => {
+    if (err) {
+        console.error("Database connection failed:", err);
+        return;
+    }
+    console.log("Connected to the database");
+});
+
+
+
+// GET API to fetch all Data
+app.get("/api/Class", (req, res) => {
+    const query = "SELECT * FROM Class";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+app.get("/api/Section", (req, res) => {
+    const query = "SELECT * FROM Section";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+app.get("/api/Subject", (req, res) => {
+    const query = "SELECT * FROM Subject";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+app.get("/api/Student", (req, res) => {
+    const query = "SELECT * FROM Student";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+app.get("/api/RO LO Mapping", (req, res) => {
+    const query = "SELECT * FROM RO LO Mapping";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+app.get("/api/Learning Outcome", (req, res) => {
+    const query = "SELECT * FROM Learning Outcome";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+app.get("/api/Assisment Criteria", (req, res) => {
+    const query = "SELECT * FROM Assisment Criteria";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+app.get("/api/LO AC Mapping", (req, res) => {
+    const query = "SELECT * FROM LO AC Mapping";
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error fetching data:", err);
+            res.status(500).send({ error: "Failed to fetch data" });
+            return;
+        }
+        res.send(results);
+    });
+});
+
+
+// POST api
+
+app.post("/api/Class", (req, res) => {
+    const { ClassName } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "ClassName is required" });
+    }
+
+    const query = "INSERT INTO Class (ClassName) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding ClassName:", err);
+            res.status(500).send({ error: "Failed to add ClassName" });
+            return;
+        }
+        res.status(201).send({ message: "ClassName added successfully", productId: result.insertId });
+    });
+});
+
+
+app.post("/api/Class/Section", (req, res) => {
+    const { SectionName } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "SectionName is required" });
+    }
+
+    const query = "INSERT INTO Section (SectionName) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding SectionName:", err);
+            res.status(500).send({ error: "Failed to add SectionName" });
+            return;
+        }
+        res.status(201).send({ message: "SectionName added successfully", productId: result.insertId });
+    });
+});
+
+
+app.post("/api/Subject", (req, res) => {
+    const { SubjectName } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "SubjectName is required" });
+    }
+
+    const query = "INSERT INTO Subject (SubjectName) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding SubjectName:", err);
+            res.status(500).send({ error: "Failed to add SubjectName" });
+            return;
+        }
+        res.status(201).send({ message: "SubjectName added successfully", productId: result.insertId });
+    });
+});
+
+app.post("/api/Subject/RO", (req, res) => {
+    const { ROName } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "ROName is required" });
+    }
+
+    const query = "INSERT INTO RO (ROName) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding ROName:", err);
+            res.status(500).send({ error: "Failed to add ROName" });
+            return;
+        }
+        res.status(201).send({ message: "ROName added successfully", productId: result.insertId });
+    });
+});
+
+app.post("/api/Subject/RO/LO", (req, res) => {
+    const { LOName } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "LOName is required" });
+    }
+
+    const query = "INSERT INTO LO (LOName) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding LOName:", err);
+            res.status(500).send({ error: "Failed to add LOName" });
+            return;
+        }
+        res.status(201).send({ message: "LOName added successfully", productId: result.insertId });
+    });
+});
+
+app.post("/api/Subject/RO/LO", (req, res) => {
+    const { Priority } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "Priority is required" });
+    }
+
+    const query = "INSERT INTO LO (Priority) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding Priority:", err);
+            res.status(500).send({ error: "Failed to add Priority" });
+            return;
+        }
+        res.status(201).send({ message: "Priority added successfully", productId: result.insertId });
+    });
+});
+
+app.post("/api/Subject/RO/LO/AC", (req, res) => {
+    const { Priority } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "Priority is required" });
+    }
+
+    const query = "INSERT INTO AC (Priority) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding Priority:", err);
+            res.status(500).send({ error: "Failed to add Priority" });
+            return;
+        }
+        res.status(201).send({ message: "Priority added successfully", productId: result.insertId });
+    });
+});
+
+app.post("/api/Subject/RO/LO/AC", (req, res) => {
+    const { MaxMarks } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "MaxMarks is required" });
+    }
+
+    const query = "INSERT INTO AC (MaxMarks) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding MaxMarks:", err);
+            res.status(500).send({ error: "Failed to add MaxMarks" });
+            return;
+        }
+        res.status(201).send({ message: "MaxMarks added successfully", productId: result.insertId });
+    });
+});
+
+app.post("/api/Subject/RO/LO/AC/AC Score", (req, res) => {
+    const { ObtainScore } = req.body;
+
+    // Validation
+    if (name == null || name == "") {
+        return res.status(400).send({ error: "ObtainScore is required" });
+    }
+
+    const query = "INSERT INTO AC Score (ObtainScore) VALUES (?)";
+    const values = [name];
+
+    db.query(query, values, (err, result) => {
+        if (err) {
+            console.error("Error adding ObtainScore:", err);
+            res.status(500).send({ error: "Failed to add ObtainScore" });
+            return;
+        }
+        res.status(201).send({ message: "ObtainScore added successfully", productId: result.insertId });
+    });
+});
+
+// Start the server
+app.listen(PORT, (err) => {
+    if (err) {
+        console.error("Error starting server:", err);
+    } else {
+        console.log(`Server running on port ${PORT}`);
+    }
+});
