@@ -1,5 +1,26 @@
-Get API for students
--------------------------------------------------------------------------------------------------------------------
+import express , {json} from "express";
+import mysql from "mysql2";
+
+const app = express();
+const PORT = process.env.PORT || 8000;
+
+const db = mysql.createConnection({
+    host: "localhost",  
+    user: "root",        
+    password: "passwd",        
+    database: "mayoApp" 
+});
+
+db.connect((err) => {
+    if (err) {
+        console.error("Database connection failed:", err);
+        return;
+    }
+    console.log("Connected to the database");
+});
+//-------------------------------------------------------------------------------------------------------------------
+//Get API for students
+//-------------------------------------------------------------------------------------------------------------------
 app.get('/api/students', (req, res) => {
     const year = req.headers['year'];
     const className = req.headers['class'];
@@ -43,4 +64,100 @@ app.get('/api/students', (req, res) => {
         // Return the list of students if found
         return res.status(200).json({ Students: results });
     });
+});
+
+//-------------------------------------------------------------------------------------------------------------------
+//Get API for report_outcomes
+//-------------------------------------------------------------------------------------------------------------------
+app.get('/api/report_outcome', (req, res) => {
+    const year = req.headers['year'];
+    const subject = req.headers['subject'];
+
+    // Check if any of the required headers are missing
+    if (!year || !subject) {
+        return res.status(400).json({
+            message: "Missing required headers. Please provide 'year' and 'subject'."
+        });
+    }
+
+    // Validate the 'year' header (check if it’s a number) and 'subject' (check if it's non-empty)
+    if (isNaN(year) || !subject.trim()) {
+        return res.status(400).json({
+            message: "Invalid header values. 'year' should be a number, and 'subject' cannot be empty."
+        });
+    }
+
+    console.log(`Year: ${year}, Subject: ${subject}`);
+
+    // Use parameterized queries to avoid SQL injection
+    const query = `
+        SELECT id, name 
+        FROM report_outcome 
+        WHERE year = ? AND subject = ?
+    `;
+
+    db.query(query, [year, subject], (err, results) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).json({ message: 'Server error' });
+        }
+
+        // Check if no results were found
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'No report outcomes found for the given year and subject.' });
+        }
+
+        // Return the list of report outcomes if found
+        return res.status(200).json({ ro: results });
+    });
+});
+---------------------------------------------------------------------------------------------------------------------
+POST learning_outcomes
+---------------------------------------------------------------------------------------------------------------------
+app.post('/api/learning_outcomes', async (req, res) => {
+    const { year, quarter, class: className, section, subject } = req.headers;
+    const { name } = req.body;
+
+    console.log('Request Headers:', req.headers);
+    console.log('Request Body:', req.body);
+
+    // Check if the name field is present in the body
+    if (!name) {
+        return res.status(400).json({
+            message: 'Missing required "name" field in the body.',
+        });
+    }
+
+    // Check for missing required headers
+    if (!year || !quarter || !className || !section || !subject) {
+        return res.status(400).json({
+            message: 'Missing required fields in headers. Ensure year, quarter, class, section, and subject are provided.',
+        });
+    }
+
+    try {
+        // Insert learning outcome into the database using async/await
+        const insertQuery =
+            'INSERT INTO learning_outcomes (name, year, quarter, class, section, subject) VALUES (?, ?, ?, ?, ?, ?)';
+        
+        const [result] = await db.query(insertQuery, [
+            name,
+            year,
+            quarter,
+            className,
+            section,
+            subject,
+        ]);
+
+        return res.status(201).json({
+            message: 'Learning outcome added successfully',
+        });
+    } catch (err) {
+        console.error('Error inserting learning outcome:', err);
+
+        return res.status(500).json({
+            message: 'Server error while inserting learning outcome',
+            error: err.message,
+        });
+    }
 });
