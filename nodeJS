@@ -296,3 +296,101 @@ app.get('/api/assessment_criterias', async (req, res) => {
                 });
             }
         });
+
+//---------------------------------------------------------------------------------------------------------------------
+// POST ac_scores
+//---------------------------------------------------------------------------------------------------------------------
+app.post('/api/ac_scores', async (req, res) => {
+            const { student_id, ac_id } = req.headers; // Extract headers
+            const { value } = req.body; // Extract body
+        
+            console.log(`Assessment Criteria ID: ${ac_id}, Student ID: ${student_id}, Score: ${value}`);
+        
+            // Validate input
+            if (!student_id || !ac_id || value === undefined) {
+                return res.status(400).json({
+                    message: 'Invalid input. Student ID (student_id), Assessment Criteria ID (ac_id), and value are required.',
+                });
+            }
+        
+            try {
+                // Query to check if the record already exists
+                const checkQuery = `
+                    SELECT * FROM ac_scores
+                    WHERE student_id = ? AND ac_id = ?
+                `;
+                const [existingRecords] = await db.execute(checkQuery, [student_id, ac_id]);
+        
+                if (existingRecords.length > 0) {
+                    // If the record already exists, return an error
+                    return res.status(400).json({
+                        message: 'Score already exists for this student and assessment criteria.',
+                    });
+                }
+        
+                // Insert a new score if it doesn't already exist
+                const insertQuery = `
+                    INSERT INTO ac_scores (student_id, ac_id, value)
+                    VALUES (?, ?, ?)
+                `;
+                await db.execute(insertQuery, [student_id, ac_id, value]);
+        
+                return res.status(201).json({
+                    message: 'Score added successfully.',
+                });
+            } catch (err) {
+                console.error('Error inserting score:', err);
+        
+                return res.status(500).json({
+                    message: 'Server error while adding score.',
+                    error: err.message,
+                });
+            }
+        });
+
+//---------------------------------------------------------------------------------------------------------------------
+// GET ac_scores
+//---------------------------------------------------------------------------------------------------------------------
+app.get('/api/ac_scores', async (req, res) => {
+            const { student_id, ac_id } = req.headers; // Extract headers
+        
+            console.log(`Fetching score for Student ID: ${student_id}, Assessment Criteria ID: ${ac_id}`);
+        
+            // Validate input
+            if (!student_id || !ac_id) {
+                return res.status(400).json({
+                    message: 'Invalid input. Student ID (student_id) and Assessment Criteria ID (ac_id) are required.',
+                });
+            }
+        
+            try {
+                // Query to fetch the score
+                const query = `
+                    SELECT student_id, ac_id, value
+                    FROM ac_scores
+                    WHERE student_id = ? AND ac_id = ?
+                `;
+                const [results] = await db.execute(query, [student_id, ac_id]);
+        
+                if (results.length === 0) {
+                    // No record found
+                    return res.status(404).json({
+                        message: 'No score found for the given Student ID and Assessment Criteria ID.',
+                    });
+                }
+        
+                // Return the score
+                return res.status(200).json({
+                    message: 'Score fetched successfully.',
+                    score: results[0], // Return the first (and only) record
+                });
+            } catch (err) {
+                console.error('Error fetching score:', err);
+        
+                return res.status(500).json({
+                    message: 'Server error while fetching score.',
+                    error: err.message,
+                });
+            }
+        });
+        
