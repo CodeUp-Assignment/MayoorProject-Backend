@@ -19,7 +19,7 @@ db.connect((err) => {
     console.log("Connected to the database");
 });
 //-------------------------------------------------------------------------------------------------------------------
-//Get API for students
+// Get API for students
 //-------------------------------------------------------------------------------------------------------------------
 app.get('/api/students', (req, res) => {
     const year = req.headers['year'];
@@ -67,7 +67,7 @@ app.get('/api/students', (req, res) => {
 });
 
 //-------------------------------------------------------------------------------------------------------------------
-//Get API for report_outcomes
+// Get API for report_outcomes
 //-------------------------------------------------------------------------------------------------------------------
 app.get('/api/report_outcome', (req, res) => {
     const year = req.headers['year'];
@@ -111,9 +111,9 @@ app.get('/api/report_outcome', (req, res) => {
         return res.status(200).json({ ro: results });
     });
 });
----------------------------------------------------------------------------------------------------------------------
-POST learning_outcomes
----------------------------------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------------------------------
+// POST learning_outcomes
+//---------------------------------------------------------------------------------------------------------------------
 app.post('/api/learning_outcomes', async (req, res) => {
     const { year, quarter, class: className, section, subject } = req.headers;
     const { name } = req.body;
@@ -161,3 +161,37 @@ app.post('/api/learning_outcomes', async (req, res) => {
         });
     }
 });
+//---------------------------------------------------------------------------------------------------------------------
+// GET learning_outcomes
+//---------------------------------------------------------------------------------------------------------------------
+
+app.get('/api/learning_outcomes', async (req, res) => {
+            try {
+                const { year, subject, quarter } = req.headers; // Extract headers
+        
+                // Check if all required headers are present
+                if (!year || !subject || !quarter) {
+                    return res.status(400).json({ message: 'Missing required headers: year, subject, or quarter' });
+                }
+        
+                // Query to filter data based on year, subject, and quarter
+                const query = `
+                    SELECT id, name 
+                    FROM learning_outcomes 
+                    WHERE year = ? AND subject = ? AND quarter = ?
+                `;
+        
+                const [results] = await db.execute(query, [year, subject, quarter]);
+        
+                // If no results are found
+                if (results.length === 0) {
+                    return res.status(404).json({ message: 'No learning outcomes found for the provided filters' });
+                }
+        
+                // Return the filtered data
+                res.status(200).json(results);
+            } catch (error) {
+                console.error('Error fetching learning outcomes:', error);
+                res.status(500).json({ message: 'Internal server error' });
+            }
+        });
