@@ -1,272 +1,46 @@
-import express , {json} from "express";
-import mysql from "mysql2";
-
-const app = express();
-const PORT = process.env.PORT || 8000;
-
-const db = mysql.createConnection({
-    host: "localhost",  
-    user: "root",        
-    password: "1234",        
-    database: "testdb" 
-});
-
-db.connect((err) => {
-    if (err) {
-        console.error("Database connection failed:", err);
-        return;
-    }
-    console.log("Connected to the database");
-});
-
-// Get/student : filter by -> class, section, year 
-//     return - enroll no. ,student name 
-app.get('/api/Students', (req, res) => {
+Get API for students
+-------------------------------------------------------------------------------------------------------------------
+app.get('/api/students', (req, res) => {
     const year = req.headers['year'];
     const className = req.headers['class'];
     const section = req.headers['section'];
 
+    // Check if any of the required headers are missing
+    if (!year || !className || !section) {
+        return res.status(400).json({
+            message: "Missing required headers. Please provide 'year', 'class', and 'section'."
+        });
+    }
+
+    // Check if year, class, and section have valid data types (you can add more validation if needed)
+    if (isNaN(year) || isNaN(className) || !section.trim()) {
+        return res.status(400).json({
+            message: "Invalid header values. 'year' and 'class' should be numbers, and 'section' cannot be empty."
+        });
+    }
+
     console.log(`Year: ${year}, Class: ${className}, Section: ${section}`);
 
-    db.query(
-        'SELECT enroll_no, name FROM Students WHERE year = ? AND class = ? AND section = ?',
-        [year, className, section],
-        (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ message: 'Server error' });
-            }
-            return res.status(200).json({ Students: results });
-        }
-    );
-});
-
-// Get/RO : filter by -> year, subject
-//      return - name ,id
-app.get('/api/R0', (req, res) => {
-    const year = req.headers['year'];
-    const subject = req.headers['subject'];
-
-    console.log(`Year: ${year}, Subject: ${subject}`);
-
-    // Query the database for RO data
-    db.query(
-        'SELECT id, name FROM RO WHERE year = ? AND subject = ?',
-        [year, subject],
-        (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ message: 'Server error' });
-            }
-            return res.status(200).json({ ro: results });
-        }
-    );
-});
-
-
-// Post/LO :
-//     pass - name, priority, mapping-RO-array
-app.post('/api/LO', (req, res) => {
-    const { name, priority, mappingROArray } = req.body;
-
-    // Validate input
-    if (!name || !priority || !Array.isArray(mappingROArray) || mappingROArray.length === 0) {
-        return res.status(400).json({ message: 'Invalid input. Please provide name, priority, and a non-empty mapping-RO-array.' });
-    }
-
-    console.log(`Inserting LO: Name = ${name}, Priority = ${priority}, Mapping-RO-Array = ${mappingROArray}`);
-
-    // Insert LO into the existing LO table
-    const insertLOQuery = 'INSERT INTO LO (name, priority) VALUES (?, ?)';
-    db.query(insertLOQuery, [name, priority], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Error while inserting into LO table.' });
-        }
-
-        const loId = result.insertId; // Get the inserted LO ID
-        console.log(`LO inserted with ID: ${loId}`);
-
-        // Insert mappings into lo_ro_mapping table
-        const insertMappingQuery = 'INSERT INTO lo_ro_mapping (lo_id, ro_id) VALUES ?';
-        const mappingData = mappingROArray.map(roId => [loId, roId]);
-
-        db.query(insertMappingQuery, [mappingData], (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ message: 'Error while inserting into LO-RO mapping table.' });
-            }
-
-            return res.status(201).json({ message: 'LO and mappings added successfully.', loId });
-        });
-    });
-});
-
-
-// Get/LO : filter by -> year, subject, quarter
-//     return - name, priority,id
-app.get('/api/LO', (req, res) => {
-    const year = req.headers['year'];
-    const subject = req.headers['subject'];
-    const quarter = req.headers['quarter'];
-
-    console.log(`Year: ${year}, Subject: ${subject}, Quarter: ${quarter}`);
-
-    // Validate the input
-    if (!year || !subject || !quarter) {
-        return res.status(400).json({ message: 'Invalid input. Year, Subject, and Quarter are required.' });
-    }
-
-    // Query to filter LO data by year, subject, and quarter
+    // Use parameterized queries to avoid SQL injection
     const query = `
-        SELECT id, name, priority
-        FROM lo_table
-        WHERE year = ? AND subject = ? AND quarter = ?
+        SELECT s.name 
+        FROM students s 
+        JOIN students_records sc ON s.id = sc.student_id 
+        WHERE sc.year = ? AND sc.class = ? AND sc.section = ?
     `;
 
-    db.query(query, [year, subject, quarter], (err, results) => {
+    db.query(query, [year, className, section], (err, results) => {
         if (err) {
             console.error(err);
             return res.status(500).json({ message: 'Server error' });
         }
 
-        return res.status(200).json({ learningObjectives: results });
-    });
-});
-
-
-// Post/AC :
-//     pass - name, priority, mapping-LO-array
-app.post('/api/AC', (req, res) => {
-    const { name, priority, mappingLOArray } = req.body;
-
-    // Validate input
-    if (!name || !priority || !Array.isArray(mappingLOArray) || mappingLOArray.length === 0) {
-        return res.status(400).json({ message: 'Invalid input. Please provide name, priority, and a non-empty mapping-LO-array.' });
-    }
-
-    console.log(`Inserting AC: Name = ${name}, Priority = ${priority}, Mapping-LO-Array = ${mappingLOArray}`);
-
-    // Insert AC into the AC table
-    const insertACQuery = 'INSERT INTO AC (name, priority) VALUES (?, ?)';
-    db.query(insertACQuery, [name, priority], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Error while inserting into AC table.' });
+        // Check if no results were found
+        if (results.length === 0) {
+            return res.status(404).json({ message: 'No students found for the given year, class, and section.' });
         }
 
-        const acId = result.insertId; // Get the inserted AC ID
-        console.log(`AC inserted with ID: ${acId}`);
-
-        // Insert mappings into ac_lo_mapping table
-        const insertMappingQuery = 'INSERT INTO ac_lo_mapping (ac_id, lo_id) VALUES ?';
-        const mappingData = mappingLOArray.map(loId => [acId, loId]);
-
-        db.query(insertMappingQuery, [mappingData], (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(500).json({ message: 'Error while inserting into AC-LO mapping table.' });
-            }
-
-            return res.status(201).json({ message: 'AC and mappings added successfully.', acId });
-        });
+        // Return the list of students if found
+        return res.status(200).json({ Students: results });
     });
-});
-
-
-// get/AC : filter by -> subject year quarter
-//  return - name priority,id
-app.get('/api/AC', (req, res) => {
-    const subject = req.headers['subject'];
-    const year = req.headers['year'];
-    const quarter = req.headers['quarter'];
-
-    console.log(`Subject: ${subject}, Year: ${year}, Quarter: ${quarter}`);
-
-    // Validate input
-    if (!subject || !year || !quarter) {
-        return res.status(400).json({ message: 'Invalid input. Subject, Year, and Quarter are required.' });
-    }
-
-    // Query to filter AC data by subject, year, and quarter
-    const query = `
-        SELECT id, name, priority
-        FROM ac_table
-        WHERE subject = ? AND year = ? AND quarter = ?
-    `;
-
-    db.query(query, [subject, year, quarter], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Server error' });
-        }
-
-        return res.status(200).json({ assessments: results });
-    });
-});
-
-
-// Post/ACScore : filter by -> id ,studentId
-//     pass - score 
-app.post('/api/AC_Scores', (req, res) => {
-    const id = req.headers['id'];
-    const studentId = req.headers['studentid'];
-    const { score } = req.body;
-
-    console.log(`Assessment ID: ${id}, Student ID: ${studentId}, Score: ${score}`);
-
-    // Validate input
-    if (!id || !studentId || score === undefined) {
-        return res.status(400).json({ message: 'Invalid input. ID, studentId, and score are required.' });
-    }
-
-    // Query to check if the record already exists
-    const checkQuery = `
-        SELECT * FROM AC_Scores
-        WHERE id = ? AND student_id = ?
-    `;
-
-    db.query(checkQuery, [id, studentId], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Server error while checking record.' });
-        }
-
-        if (results.length > 0) {
-            // If the score already exists, notify the user
-            return res.status(400).json({ message: 'Score already exists for this student in the given assessment.' });
-        } else {
-            // If the record does not exist, insert a new row
-            const insertQuery = `
-                INSERT INTO AC_Scores (id, student_id, score)
-                VALUES (?, ?, ?)
-            `;
-            db.query(insertQuery, [id, studentId, score], (insertErr) => {
-                if (insertErr) {
-                    console.error(insertErr);
-                    return res.status(500).json({ message: 'Server error while inserting score.' });
-                }
-                return res.status(201).json({ message: 'Score inserted successfully.' });
-            });
-        }
-    });
-});
-
-
-// Get/ACScore : filter by -> studentID
-//     return - id, name, score
-
-// Get/LOScore : filter by -> studentId
-//     return - id, name, score
-
-// Get/ROscore : filter by -> studentId 
-//     return - id, name, score
-
-// Start the server
-app.listen(PORT, (err) => {
-    if (err) {
-        console.error("Error starting server:", err);
-    } else {
-        console.log(`Server running on port ${PORT}`);
-    }
 });
