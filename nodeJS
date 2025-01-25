@@ -69,7 +69,7 @@ app.get('/api/students', (req, res) => {
 //-------------------------------------------------------------------------------------------------------------------
 // Get API for report_outcomes
 //-------------------------------------------------------------------------------------------------------------------
-app.get('/api/report_outcome', (req, res) => {
+app.get('/api/report_outcomes', (req, res) => {
     const year = req.headers['year'];
     const subject = req.headers['subject'];
 
@@ -92,7 +92,7 @@ app.get('/api/report_outcome', (req, res) => {
     // Use parameterized queries to avoid SQL injection
     const query = `
         SELECT id, name 
-        FROM report_outcome 
+        FROM report_outcomes 
         WHERE year = ? AND subject = ?
     `;
 
