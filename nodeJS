@@ -1,205 +1,210 @@
-import express , {json} from "express";
-import mysql from "mysql2";
+import express from "express";
+import mysql from "mysql2/promise";
 
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-const db = mysql.createConnection({
-    host: "localhost",  
-    user: "root",        
-    password: "passwd",        
-    database: "mayoApp" 
-});
-
-db.connect((err) => {
-    if (err) {
-        console.error("Database connection failed:", err);
-        return;
-    }
-    console.log("Connected to the database");
-});
-//-------------------------------------------------------------------------------------------------------------------
-// Get API for students
-//-------------------------------------------------------------------------------------------------------------------
-app.get('/api/students', (req, res) => {
-    const year = req.headers['year'];
-    const className = req.headers['class'];
-    const section = req.headers['section'];
-
-    // Check if any of the required headers are missing
-    if (!year || !className || !section) {
-        return res.status(400).json({
-            message: "Missing required headers. Please provide 'year', 'class', and 'section'."
+app.use(express.json());
+// Use async/await properly
+(async () => {
+    try {
+        const db = await mysql.createPool({
+            host: "localhost",  
+            user: "root",        
+            password: "passwd",        
+            database: "mayoApp" 
         });
-    }
 
-    // Check if year, class, and section have valid data types (you can add more validation if needed)
-    if (isNaN(year) || isNaN(className) || !section.trim()) {
-        return res.status(400).json({
-            message: "Invalid header values. 'year' and 'class' should be numbers, and 'section' cannot be empty."
-        });
-    }
+        console.log("Connected to the database");
 
-    console.log(`Year: ${year}, Class: ${className}, Section: ${section}`);
+        // Define APIs inside the async block to ensure `db` is initialized
+        //-------------------------------------------------------------------------------------------------------------------
+        // Get API for students
+        //-------------------------------------------------------------------------------------------------------------------
+        app.get('/api/students', async (req, res) => {
+            const year = req.headers['year'];
+            const className = req.headers['class'];
+            const section = req.headers['section'];
 
-    // Use parameterized queries to avoid SQL injection
-    const query = `
-        SELECT s.name 
-        FROM students s 
-        JOIN students_records sc ON s.id = sc.student_id 
-        WHERE sc.year = ? AND sc.class = ? AND sc.section = ?
-    `;
+            if (!year || !className || !section) {
+                return res.status(400).json({
+                    message: "Missing required headers. Please provide 'year', 'class', and 'section'."
+                });
+            }
 
-    db.query(query, [year, className, section], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Server error' });
-        }
+            if (isNaN(year) || isNaN(className) || !section.trim()) {
+                return res.status(400).json({
+                    message: "Invalid header values. 'year' and 'class' should be numbers, and 'section' cannot be empty."
+                });
+            }
 
-        // Check if no results were found
-        if (results.length === 0) {
-            return res.status(404).json({ message: 'No students found for the given year, class, and section.' });
-        }
-
-        // Return the list of students if found
-        return res.status(200).json({ Students: results });
-    });
-});
-
-//-------------------------------------------------------------------------------------------------------------------
-// Get API for report_outcomes
-//-------------------------------------------------------------------------------------------------------------------
-app.get('/api/report_outcomes', (req, res) => {
-    const year = req.headers['year'];
-    const subject = req.headers['subject'];
-
-    // Check if any of the required headers are missing
-    if (!year || !subject) {
-        return res.status(400).json({
-            message: "Missing required headers. Please provide 'year' and 'subject'."
-        });
-    }
-
-    // Validate the 'year' header (check if it’s a number) and 'subject' (check if it's non-empty)
-    if (isNaN(year) || !subject.trim()) {
-        return res.status(400).json({
-            message: "Invalid header values. 'year' should be a number, and 'subject' cannot be empty."
-        });
-    }
-
-    console.log(`Year: ${year}, Subject: ${subject}`);
-
-    // Use parameterized queries to avoid SQL injection
-    const query = `
-        SELECT id, name 
-        FROM report_outcomes 
-        WHERE year = ? AND subject = ?
-    `;
-
-    db.query(query, [year, subject], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Server error' });
-        }
-
-        // Check if no results were found
-        if (results.length === 0) {
-            return res.status(404).json({ message: 'No report outcomes found for the given year and subject.' });
-        }
-
-        // Return the list of report outcomes if found
-        return res.status(200).json({ ro: results });
-    });
-});
-//---------------------------------------------------------------------------------------------------------------------
-// POST learning_outcomes
-//---------------------------------------------------------------------------------------------------------------------
-app.post('/api/learning_outcomes', async (req, res) => {
-const { year, quarter, subject } = req.headers;
-const { name } = req.body;
-
-console.log('Request Headers:', req.headers);
-console.log('Request Body:', req.body);
-
-// Check if the name field is present in the body
-if (!name) {
-    return res.status(400).json({
-        message: 'Missing required "name" field in the body.',
-    });
-}
-
-// Check for missing required headers
-if (!year || !quarter || !className || !section || !subject) {
-    return res.status(400).json({
-        message: 'Missing required fields in headers. Ensure year, quarter, class, section, and subject are provided.',
-    });
-}
-
-try {
-    // Insert learning outcome into the database using async/await
-    const insertQuery =
-        'INSERT INTO learning_outcomes (name, year, quarter, subject) VALUES (?, ?, ?, ?)';
-    
-    const [result] = await db.query(insertQuery, [
-        name,
-        year,
-        quarter,
-        subject,
-    ]);
-
-    return res.status(201).json({
-        message: 'Learning outcome added successfully',
-    });
-} catch (err) {
-    console.error('Error inserting learning outcome:', err);
-
-    return res.status(500).json({
-        message: 'Server error while inserting learning outcome',
-        error: err.message,
-    });
-}
-
-});
-//---------------------------------------------------------------------------------------------------------------------
-// GET learning_outcomes
-//---------------------------------------------------------------------------------------------------------------------
-
-app.get('/api/learning_outcomes', async (req, res) => {
             try {
-                const { year, subject, quarter } = req.headers; // Extract headers
-        
-                // Check if all required headers are present
-                if (!year || !subject || !quarter) {
-                    return res.status(400).json({ message: 'Missing required headers: year, subject, or quarter' });
-                }
-        
-                // Query to filter data based on year, subject, and quarter
                 const query = `
-                    SELECT id, name 
-                    FROM learning_outcomes 
-                    WHERE year = ? AND subject = ? AND quarter = ?
+                    SELECT s.name 
+                    FROM students s 
+                    JOIN students_records sc ON s.id = sc.student_id 
+                    WHERE sc.year = ? AND sc.class = ? AND sc.section = ?
                 `;
-        
-                const [results] = await db.execute(query, [year, subject, quarter]);
-        
-                // If no results are found
+
+                const [results] = await db.execute(query, [year, className, section]);
+
                 if (results.length === 0) {
-                    return res.status(404).json({ message: 'No learning outcomes found for the provided filters' });
+                    return res.status(404).json({ message: 'No students found for the given year, class, and section.' });
                 }
-        
-                // Return the filtered data
-                res.status(200).json(results);
-            } catch (error) {
-                console.error('Error fetching learning outcomes:', error);
-                res.status(500).json({ message: 'Internal server error' });
+
+                return res.status(200).json({ Students: results });
+            } catch (err) {
+                console.error(err);
+                return res.status(500).json({ message: 'Server error' });
             }
         });
 
-//---------------------------------------------------------------------------------------------------------------------
-// POST Assessment_criterias
-//---------------------------------------------------------------------------------------------------------------------
+        //-------------------------------------------------------------------------------------------------------------------
+        // Get API for report_outcomes
+        //-------------------------------------------------------------------------------------------------------------------
+        app.get("/api/report_outcomes", async (req, res) => {
+        const year = req.headers["year"];
+        const subject = req.headers["subject"];
 
-app.post('/api/assessment_criterias', async (req, res) => {
+        if (!year || !subject) {
+            return res.status(400).json({
+            message: "Missing required headers. Please provide 'year' and 'subject'.",
+            });
+        }
+
+        if (isNaN(year) || !subject.trim()) {
+            return res.status(400).json({
+            message: "Invalid header values. 'year' should be a number, and 'subject' cannot be empty.",
+            });
+        }
+
+        try {
+            const query = `
+            SELECT id, name 
+            FROM report_outcomes 
+            WHERE year = ? AND subject = ?
+            `;
+            const [results] = await db.execute(query, [year, subject]);
+
+            if (results.length === 0) {
+            return res.status(404).json({ message: "No report outcomes found for the given year and subject." });
+            }
+
+            res.status(200).json({ ro: results });
+        } catch (err) {
+            console.error("Error fetching report outcomes:", err);
+            res.status(500).json({ message: "Server error" });
+        }
+        });
+
+        //-------------------------------------------------------------------------------------------------------------------
+        // POST learning_outcomes
+        //-------------------------------------------------------------------------------------------------------------------
+        app.post("/api/learning_outcomes", async (req, res) => {
+        const { year, quarter, subject } = req.headers;
+        const { name } = req.body;
+
+        if (!year || !quarter || !subject || !name) {
+            return res.status(400).json({
+            message: "Missing required fields: year, quarter, subject (headers) or name (body).",
+            });
+        }
+
+        try {
+            const query = `
+            INSERT INTO learning_outcomes (name, year, quarter, subject) 
+            VALUES (?, ?, ?, ?)
+            `;
+            const [result] = await db.execute(query, [name, year, quarter, subject]);
+
+            res.status(201).json({
+            message: "Learning outcome added successfully",
+            insertedId: result.insertId,
+            });
+        } catch (err) {
+            console.error("Error inserting learning outcome:", err);
+            res.status(500).json({ message: "Server error", error: err.message });
+        }
+        });
+
+        //-------------------------------------------------------------------------------------------------------------------
+        // GET learning_outcomes
+        //-------------------------------------------------------------------------------------------------------------------
+        app.get("/api/learning_outcomes", async (req, res) => {
+        const { year, subject, quarter } = req.headers;
+
+        if (!year || !subject || !quarter) {
+            return res.status(400).json({ message: "Missing required headers: year, subject, or quarter" });
+        }
+
+        try {
+            const query = `
+            SELECT id, name 
+            FROM learning_outcomes 
+            WHERE year = ? AND subject = ? AND quarter = ?
+            `;
+            const [results] = await db.execute(query, [year, subject, quarter]);
+
+            if (results.length === 0) {
+            return res.status(404).json({ message: "No learning outcomes found for the provided filters" });
+            }
+
+            res.status(200).json(results);
+        } catch (err) {
+            console.error("Error fetching learning outcomes:", err);
+            res.status(500).json({ message: "Internal server error" });
+        }
+        });
+        //---------------------------------------------------------------------------------------------------------------------
+        // GET Assessment_criterias
+        //---------------------------------------------------------------------------------------------------------------------
+        app.get('/api/assessment_criterias', async (req, res) => {
+            const { subject, year, quarter } = req.headers; // Extract headers
+
+            console.log(`Subject: ${subject}, Year: ${year}, Quarter: ${quarter}`);
+
+            // Validate input
+            if (!subject || !year || !quarter) {
+                return res.status(400).json({
+                    message: 'Invalid input. Subject, Year, and Quarter are required in the headers.',
+                });
+            }
+
+            try {
+                // SQL query to fetch assessment_criterias based on filters
+                const query = `
+                    SELECT id, name, max_marks
+                    FROM assessment_criterias
+                    WHERE subject = ? AND year = ? AND quarter = ?
+                `;
+
+                // Execute the query
+                const [results] = await db.execute(query, [subject, year, quarter]);
+
+                // Check if results are found
+                if (results.length === 0) {
+                    return res.status(404).json({
+                        message: 'No assessment criterias found for the given filters.',
+                    });
+                }
+
+                // Return the filtered data
+                return res.status(200).json({
+                    message: 'Assessment criterias retrieved successfully',
+                    assessments: results,
+                });
+            } catch (err) {
+                console.error('Error retrieving assessment criterias:', err);
+
+                return res.status(500).json({
+                    message: 'Server error while fetching assessment criterias',
+                    error: err.message,
+                });
+            }
+        });
+        //-------------------------------------------------------------------------------------------------------------------
+        // POST Assessment_criterias
+        app.post('/api/assessment_criterias', async (req, res) => {
             const { year, quarter, subject } = req.headers; // Extract headers
             const { max_marks, name } = req.body; // Extract body parameters
         
@@ -247,121 +252,76 @@ app.post('/api/assessment_criterias', async (req, res) => {
                 });
             }
         });
-
-//---------------------------------------------------------------------------------------------------------------------
-// GET Assessment_criterias
-//---------------------------------------------------------------------------------------------------------------------
-app.get('/api/assessment_criterias', async (req, res) => {
-            const { subject, year, quarter } = req.headers; // Extract headers
+        //-------------------------------------------------------------------------------------------------------------------
+       // POST API to add normalized score for a student
+        app.post("/api/ac_scores", async (req, res) => {
+            try {
+            // Extracting headers
+            const { year, quarter, subject, student_id, ac_id } = req.headers;
         
-            console.log(`Subject: ${subject}, Year: ${year}, Quarter: ${quarter}`);
+            // Extracting obtained marks from the body
+            const { obtained_marks } = req.body;
         
-            // Validate input
-            if (!subject || !year || !quarter) {
-                return res.status(400).json({
-                    message: 'Invalid input. Subject, Year, and Quarter are required in the headers.',
-                });
+            // Input validation
+            if (!obtained_marks) {
+                return res.status(400).json({ error: "obtained_marks is required in the body" });
+            }
+            if (!student_id || !ac_id) {
+                return res.status(400).json({ error: "student_id and ac_id are required in the headers" });
             }
         
-            try {
-                // SQL query to fetch assessment_criterias based on filters
-                const query = `
-                    SELECT id, name, max_marks
-                    FROM assessment_criterias
-                    WHERE subject = ? AND year = ? AND quarter = ?
-                `;
+            // Fetch the assessment criteria using ac_id
+            const [criteriaRows] = await db.query(
+                "SELECT max_marks FROM assessment_criterias WHERE id = ? AND subject = ? AND quarter = ? AND year = ?",
+                [ac_id, subject, quarter, year]
+            );
         
-                // Execute the query
-                const [results] = await db.execute(query, [subject, year, quarter]);
+            // If no matching criteria is found
+            if (criteriaRows.length === 0) {
+                return res.status(404).json({ error: "Assessment criteria not found for the given parameters" });
+            }
         
-                // Check if results are found
-                if (results.length === 0) {
-                    return res.status(404).json({
-                        message: 'No assessment criterias found for the given filters.',
-                    });
-                }
+            // Fetching max_marks for normalization
+            const max_marks = criteriaRows[0].max_marks;
         
-                // Return the filtered data
-                return res.status(200).json({
-                    message: 'Assessment criterias retrieved successfully',
-                    assessments: results,
-                });
-            } catch (err) {
-                console.error('Error retrieving assessment criterias:', err);
+            // Calculate normalized marks
+            const normalized_marks = obtained_marks / max_marks;
         
-                return res.status(500).json({
-                    message: 'Server error while fetching assessment criterias',
-                    error: err.message,
-                });
+            // Insert normalized score into ac_scores table
+            const [result] = await db.query(
+                "INSERT INTO ac_scores (student_id, ac_id, value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE value = ?",
+                [student_id, ac_id, normalized_marks, normalized_marks]
+            );
+        
+            // Respond with success message
+            res.status(201).json({
+                message: "Normalized score saved successfully",
+                data: {
+                student_id,
+                ac_id,
+                normalized_marks,
+                },
+            });
+            } catch (error) {
+            console.error("Error adding normalized score:", error.message);
+            res.status(500).json({ error: "Internal Server Error" });
             }
         });
+        //---------------------------------------------------------------------------------------------------------------------
+        // GET ac_scores
+        //---------------------------------------------------------------------------------------------------------------------
+        app.get('/api/ac_scores', async (req, res) => {
+            const { student_id, ac_id } = req.body; // Extract headers
 
-//---------------------------------------------------------------------------------------------------------------------
-// POST ac_scores
-//---------------------------------------------------------------------------------------------------------------------
-app.post('/api/ac_scores', async (req, res) => {
-            const { student_id, ac_id } = req.headers; // Extract headers
-            const { value } = req.body; // Extract body
-        
-            console.log(`Assessment Criteria ID: ${ac_id}, Student ID: ${student_id}, Score: ${value}`);
-        
-            // Validate input
-            if (!student_id || !ac_id || value === undefined) {
-                return res.status(400).json({
-                    message: 'Invalid input. Student ID (student_id), Assessment Criteria ID (ac_id), and value are required.',
-                });
-            }
-        
-            try {
-                // Query to check if the record already exists
-                const checkQuery = `
-                    SELECT * FROM ac_scores
-                    WHERE student_id = ? AND ac_id = ?
-                `;
-                const [existingRecords] = await db.execute(checkQuery, [student_id, ac_id]);
-        
-                if (existingRecords.length > 0) {
-                    // If the record already exists, return an error
-                    return res.status(400).json({
-                        message: 'Score already exists for this student and assessment criteria.',
-                    });
-                }
-        
-                // Insert a new score if it doesn't already exist
-                const insertQuery = `
-                    INSERT INTO ac_scores (student_id, ac_id, value)
-                    VALUES (?, ?, ?)
-                `;
-                await db.execute(insertQuery, [student_id, ac_id, value]);
-        
-                return res.status(201).json({
-                    message: 'Score added successfully.',
-                });
-            } catch (err) {
-                console.error('Error inserting score:', err);
-        
-                return res.status(500).json({
-                    message: 'Server error while adding score.',
-                    error: err.message,
-                });
-            }
-        });
-
-//---------------------------------------------------------------------------------------------------------------------
-// GET ac_scores
-//---------------------------------------------------------------------------------------------------------------------
-app.get('/api/ac_scores', async (req, res) => {
-            const { student_id, ac_id } = req.headers; // Extract headers
-        
             console.log(`Fetching score for Student ID: ${student_id}, Assessment Criteria ID: ${ac_id}`);
-        
+
             // Validate input
             if (!student_id || !ac_id) {
                 return res.status(400).json({
                     message: 'Invalid input. Student ID (student_id) and Assessment Criteria ID (ac_id) are required.',
                 });
             }
-        
+
             try {
                 // Query to fetch the score
                 const query = `
@@ -370,14 +330,14 @@ app.get('/api/ac_scores', async (req, res) => {
                     WHERE student_id = ? AND ac_id = ?
                 `;
                 const [results] = await db.execute(query, [student_id, ac_id]);
-        
+
                 if (results.length === 0) {
                     // No record found
                     return res.status(404).json({
                         message: 'No score found for the given Student ID and Assessment Criteria ID.',
                     });
                 }
-        
+
                 // Return the score
                 return res.status(200).json({
                     message: 'Score fetched successfully.',
@@ -385,7 +345,7 @@ app.get('/api/ac_scores', async (req, res) => {
                 });
             } catch (err) {
                 console.error('Error fetching score:', err);
-        
+
                 return res.status(500).json({
                     message: 'Server error while fetching score.',
                     error: err.message,
@@ -393,3 +353,18 @@ app.get('/api/ac_scores', async (req, res) => {
             }
         });
         
+        const priorityValues = {
+            h: 0.5,
+            m: 0.3,
+            l: 0.2
+          };
+
+        
+        app.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
+        });
+
+        } catch (err) {
+        console.error("Error connecting to the database:", err.message);
+        }
+})();
