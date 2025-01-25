@@ -115,51 +115,50 @@ app.get('/api/report_outcome', (req, res) => {
 // POST learning_outcomes
 //---------------------------------------------------------------------------------------------------------------------
 app.post('/api/learning_outcomes', async (req, res) => {
-    const { year, quarter, class: className, section, subject } = req.headers;
-    const { name } = req.body;
+const { year, quarter, subject } = req.headers;
+const { name } = req.body;
 
-    console.log('Request Headers:', req.headers);
-    console.log('Request Body:', req.body);
+console.log('Request Headers:', req.headers);
+console.log('Request Body:', req.body);
 
-    // Check if the name field is present in the body
-    if (!name) {
-        return res.status(400).json({
-            message: 'Missing required "name" field in the body.',
-        });
-    }
+// Check if the name field is present in the body
+if (!name) {
+    return res.status(400).json({
+        message: 'Missing required "name" field in the body.',
+    });
+}
 
-    // Check for missing required headers
-    if (!year || !quarter || !className || !section || !subject) {
-        return res.status(400).json({
-            message: 'Missing required fields in headers. Ensure year, quarter, class, section, and subject are provided.',
-        });
-    }
+// Check for missing required headers
+if (!year || !quarter || !className || !section || !subject) {
+    return res.status(400).json({
+        message: 'Missing required fields in headers. Ensure year, quarter, class, section, and subject are provided.',
+    });
+}
 
-    try {
-        // Insert learning outcome into the database using async/await
-        const insertQuery =
-            'INSERT INTO learning_outcomes (name, year, quarter, class, section, subject) VALUES (?, ?, ?, ?, ?, ?)';
-        
-        const [result] = await db.query(insertQuery, [
-            name,
-            year,
-            quarter,
-            className,
-            section,
-            subject,
-        ]);
+try {
+    // Insert learning outcome into the database using async/await
+    const insertQuery =
+        'INSERT INTO learning_outcomes (name, year, quarter, subject) VALUES (?, ?, ?, ?)';
+    
+    const [result] = await db.query(insertQuery, [
+        name,
+        year,
+        quarter,
+        subject,
+    ]);
 
-        return res.status(201).json({
-            message: 'Learning outcome added successfully',
-        });
-    } catch (err) {
-        console.error('Error inserting learning outcome:', err);
+    return res.status(201).json({
+        message: 'Learning outcome added successfully',
+    });
+} catch (err) {
+    console.error('Error inserting learning outcome:', err);
 
-        return res.status(500).json({
-            message: 'Server error while inserting learning outcome',
-            error: err.message,
-        });
-    }
+    return res.status(500).json({
+        message: 'Server error while inserting learning outcome',
+        error: err.message,
+    });
+}
+
 });
 //---------------------------------------------------------------------------------------------------------------------
 // GET learning_outcomes
