@@ -437,3 +437,94 @@ app.get('/api/students', async (req, res) => {
                 res.status(500).json({ error: "Internal Server Error" });
             }
         });
+//---------------------------------------------------------------------------------------------------------------------
+// GET ro_lo_mapping
+//---------------------------------------------------------------------------------------------------------------------
+
+            app.post("/api/ro_lo_mapping", async (req, res) => {
+            try {
+                // Extract filters from headers
+                const { subject, year } = req.headers;
+        
+                // Extract data from the body (JSON)
+                const { data } = req.body; // Array with each element containing lo_id and priority (h, m, l)
+        
+                // Validation check for data
+                if (!data || !Array.isArray(data) || data.length === 0) {
+                    return res.status(400).json({
+                        error: "Invalid data format. Expected an array of objects with lo_id and priority.",
+                    });
+                }
+        
+                // Fetch relevant report_outcomes (RO) based on filters
+                const [roRows] = await db.query(
+                    `SELECT ro.id AS ro_id
+                     FROM report_outcomes ro
+                     WHERE ro.subject = ? AND ro.year = ?`,
+                    [subject, year]
+                );
+        
+                if (roRows.length === 0) {
+                    return res.status(404).json({
+                        error: "No matching RO records found for the provided filters.",
+                    });
+                }
+        
+                // Calculate priority occurrences
+                let hOccurance = 0, mOccurance = 0, lOccurance = 0;
+        
+                // Process input data and calculate total occurrences
+                data.forEach(item => {
+                    const { lo_id, priority } = item;
+                    if (priority === "h") {
+                        hOccurance++;
+                    } else if (priority === "m") {
+                        mOccurance++;
+                    } else if (priority === "l") {
+                        lOccurance++;
+                    }
+                });
+        
+                // Calculate the total denominator
+                const totalDenominator = (priorityValues.h * hOccurance) + (priorityValues.m * mOccurance) + (priorityValues.l * lOccurance);
+        
+                // Check if we have valid data for calculating weights
+                if (totalDenominator === 0) {
+                    return res.status(400).json({
+                        error: "The total denominator for weight calculation is zero. Check input values.",
+                    });
+                }
+        
+                // Calculate weight for each RO and LO pair based on priority
+                const roLoMappingPromises = data.map(async (item) => {
+                    const { lo_id, priority } = item;
+        
+                    // Calculate weight for the given priority
+                    const weight = (priorityValues[priority] * (priority === "h" ? hOccurance : priority === "m" ? mOccurance : lOccurance)) / totalDenominator;
+        
+                    // Insert into ro_lo_mapping table for each RO and LO pair
+                    const insertPromises = roRows.map(async (roRow) => {
+                        const { ro_id } = roRow;
+        
+                        await db.query(
+                            "INSERT INTO ro_lo_mapping (ro_id, lo_id, weight) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE weight = ?",
+                            [ro_id, lo_id, weight, weight]
+                        );
+                    });
+        
+                    await Promise.all(insertPromises);
+                });
+        
+                // Wait for all insert operations to complete
+                await Promise.all(roLoMappingPromises);
+        
+                res.status(201).json({
+                    message: "RO and LO mapping with weights saved successfully",
+                });
+            } catch (error) {
+                console.error("Error mapping RO and LO:", error.message);
+                res.status(500).json({
+                    error: "Internal Server Error",
+                });
+            }
+        });
