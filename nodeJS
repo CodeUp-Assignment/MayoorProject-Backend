@@ -500,7 +500,7 @@ app.get('/api/students', async (req, res) => {
                     const { lo_id, priority } = item;
         
                     // Calculate weight for the given priority
-                    const weight = (priorityValues[priority] * (priority === "h" ? hOccurance : priority === "m" ? mOccurance : lOccurance)) / totalDenominator;
+                    const weight = priorityValues[priority] / totalDenominator;
         
                     // Insert into ro_lo_mapping table for each RO and LO pair
                     const insertPromises = roRows.map(async (roRow) => {
