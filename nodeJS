@@ -1,27 +1,4 @@
-import express from "express";
-import mysql from "mysql2/promise";
-
-const app = express();
-const PORT = process.env.PORT || 8000;
-
-app.use(express.json());
-// Use async/await properly
-(async () => {
-    try {
-        const db = await mysql.createPool({
-            host: "localhost",  
-            user: "root",        
-            password: "passwd",        
-            database: "mayoApp" 
-        });
-
-        console.log("Connected to the database");
-
-        // Define APIs inside the async block to ensure `db` is initialized
-        //-------------------------------------------------------------------------------------------------------------------
-        // Get API for students
-        //-------------------------------------------------------------------------------------------------------------------
-        app.get('/api/students', async (req, res) => {
+app.get('/api/students', async (req, res) => {
             const year = req.headers['year'];
             const className = req.headers['class'];
             const section = req.headers['section'];
@@ -311,7 +288,7 @@ app.use(express.json());
         // GET ac_scores
         //---------------------------------------------------------------------------------------------------------------------
         app.get('/api/ac_scores', async (req, res) => {
-            const { student_id, ac_id } = req.body; // Extract headers
+            const { student_id, ac_id } = req.headers; // Extract headers
 
             console.log(`Fetching score for Student ID: ${student_id}, Assessment Criteria ID: ${ac_id}`);
 
@@ -352,19 +329,3 @@ app.use(express.json());
                 });
             }
         });
-        
-        const priorityValues = {
-            h: 0.5,
-            m: 0.3,
-            l: 0.2
-          };
-
-        
-        app.listen(PORT, () => {
-            console.log(`Server is running on port ${PORT}`);
-        });
-
-        } catch (err) {
-        console.error("Error connecting to the database:", err.message);
-        }
-})();
