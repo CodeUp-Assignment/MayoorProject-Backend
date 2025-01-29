@@ -1,10 +1,10 @@
 // routes/learningOutcomes.js
 import express from "express";
-import db from "../db/db.js"; // Adjust the path as necessary
+import db from "../db/db.js";
 
 const router = express.Router();
 
-// POST route to add a new learning outcome
+// POST api to add a new learning outcome
 router.post("/", async (req, res) => {
     const { year, quarter, subject } = req.headers;
     const { name } = req.body;
@@ -26,7 +26,7 @@ router.post("/", async (req, res) => {
 
         res.status(201).json({
             message: "Learning outcome added successfully",
-            insertedId: newId, // Respond with the manually generated ID
+            insertedId: newId,
         });
     } catch (err) {
         console.error("Error inserting learning outcome:", err);
@@ -34,26 +34,22 @@ router.post("/", async (req, res) => {
     }
 });
 
-// GET route to fetch learning outcomes
+// GET api to fetch learning outcomes
 router.get("/", async (req, res) => {
     const { year, subject, quarter } = req.headers;
 
     if (!year || !subject || !quarter) {
         return res.status(400).json({ message: "Missing required headers: year, subject, or quarter" });
     }
-
     try {
         const query = `
             SELECT id, name 
             FROM learning_outcomes 
-            WHERE year = ? AND subject = ? AND quarter = ?
-        `;
+            WHERE year = ? AND subject = ? AND quarter = ?`;
         const [results] = await db.execute(query, [year, subject, quarter]);
-
         if (results.length === 0) {
             return res.status(404).json({ message: "No learning outcomes found for the provided filters" });
         }
-
         res.status(200).json(results);
     } catch (err) {
         console.error("Error fetching learning outcomes:", err);
@@ -61,4 +57,4 @@ router.get("/", async (req, res) => {
     }
 });
 
-export default router; // Export the router
+export default router; 
